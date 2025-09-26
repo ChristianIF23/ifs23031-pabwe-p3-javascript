@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aplikasi Todo List Modern</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    body {
+      background: #f8f9fa;
+    }
+    .todo-card {
+      cursor: grab;
+    }
+    .todo-card.done {
+      text-decoration: line-through;
+      color: #6c757d;
+      background: #e9ecef;
+    }
+    .drag-over {
+      border: 2px dashed #0d6efd;
+    }
+  </style>
+</head>
+<body class="container py-4">
+  <h1 class="text-center mb-4"><i class="bi bi-check2-square"></i> Todo List</h1>
+
+  <!-- Input tambah todo -->
+  <div class="input-group mb-3 shadow-sm">
+    <input type="text" id="todoInput" class="form-control" placeholder="Apa yang ingin kamu lakukan?">
+    <button id="addBtn" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Tambah</button>
+  </div>
+
+  <!-- Filter & Pencarian -->
+  <div class="row mb-3 g-2">
+    <div class="col-md-3">
+      <select id="filterSelect" class="form-select shadow-sm">
+        <option value="all">Semua</option>
+        <option value="done">Selesai</option>
+        <option value="not-done">Belum Selesai</option>
+      </select>
+    </div>
+    <div class="col-md-9">
+      <input type="text" id="searchInput" class="form-control shadow-sm" placeholder="Cari todo...">
+    </div>
+  </div>
+
+  <!-- List todo -->
+  <div id="todoList" class="row gy-3"></div>
+
+  <script>
+    let todos = JSON.parse(localStorage.getItem("todos")) || [];
+
+    const todoInput = document.getElementById("todoInput");
+    const addBtn = document.getElementById("addBtn");
+    const todoList = document.getElementById("todoList");
+    const filterSelect = document.getElementById("filterSelect");
+    const searchInput = document.getElementById("searchInput");
+
+    function saveTodos() {
+      localStorage.setItem("todos", JSON.stringify(todos));
+    }
+
+    function renderTodos() {
+      todoList.innerHTML = "";
+      const filter = filterSelect.value;
+      const search = searchInput.value.toLowerCase();
+
+      todos.forEach((todo, index) => {
+        if (filter === "done" && !todo.done) return;
+        if (filter === "not-done" && todo.done) return;
+        if (!todo.title.toLowerCase().includes(search)) return;
+
+        const col = document.createElement("div");
+        col.className = "col-12";
+
+        const card = document.createElement("div");
+        card.className = "card shadow-sm todo-card " + (todo.done ? "done" : "");
+        card.draggable = true;
+
+        card.innerHTML = `
+          <div class="card-body d-flex justify-content-between align-items-center">
+            <span>${todo.title}</span>
+            <div>
+              <button class="btn btn-sm btn-success me-1 toggleBtn"><i class="bi ${todo.done ? "bi-x-circle" : "bi-check-circle"}"></i></button>
+              <button class="btn btn-sm btn-warning me-1 editBtn"><i class="bi bi-pencil-square"></i></button>
+              <button class="btn btn-sm btn-danger deleteBtn"><i class="bi bi-trash"></i></button>
+            </div>
+          </div>
+        `;
+
+        // Toggle selesai/belum
+        card.querySelector(".toggleBtn").addEventListener("click", () => {
+          todos[index].done = !todos[index].done;
+          saveTodos();
+          renderTodos();
+        });
+
+        // Edit todo
+        card.querySelector(".editBtn").addEventListener("click", () => {
+          const newTitle = prompt("Edit judul todo:", todo.title);
+          if (newTitle && newTitle.trim() !== "") {
+            if (todos.some((t, i) => t.title.toLowerCase() === newTitle.toLowerCase() && i !== index)) {
+              alert("Judul todo sudah ada!");
+              return;
+            }
+            todos[index].title = newTitle.trim();
+            saveTodos();
+            renderTodos();
+          }
+        });
+
+        // Hapus todo
+        card.querySelector(".deleteBtn").addEventListener("click", () => {
+          todos.splice(index, 1);
+          saveTodos();
+          renderTodos();
+        });
+
+        // Drag & drop
+        card.addEventListener("dragstart", (e) => {
+          e.dataTransfer.setData("index", index);
+        });
+        card.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          card.classList.add("drag-over");
+        });
+        card.addEventListener("dragleave", () => {
+          card.classList.remove("drag-over");
+        });
+        card.addEventListener("drop", (e) => {
+          e.preventDefault();
+          const fromIndex = e.dataTransfer.getData("index");
+          const toIndex = index;
+          const moved = todos.splice(fromIndex, 1)[0];
+          todos.splice(toIndex, 0, moved);
+          saveTodos();
+          renderTodos();
+        });
+
+        col.appendChild(card);
+        todoList.appendChild(col);
+      });
+    }
+
+    addBtn.addEventListener("click", () => {
+      const title = todoInput.value.trim();
+      if (title === "") {
+        alert("Judul tidak boleh kosong!");
+        return;
+      }
+      if (todos.some(todo => todo.title.toLowerCase() === title.toLowerCase())) {
+        alert("Judul todo sudah ada!");
+        return;
+      }
+      todos.push({ title, done: false });
+      saveTodos();
+      renderTodos();
+      todoInput.value = "";
+    });
+
+    filterSelect.addEventListener("change", renderTodos);
+    searchInput.addEventListener("input", renderTodos);
+
+    renderTodos();
+  </script>
+</body>
+</html>
